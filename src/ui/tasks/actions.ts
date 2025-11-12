@@ -8,6 +8,7 @@ import {
 import type { Task } from "./task";
 import type { Metadata } from "./tasks";
 import type { ColumnTag } from "../columns/columns";
+import { addPoints } from "../points/points_store";
 
 export type TaskActions = {
 	changeColumn: (id: string, column: ColumnTag) => Promise<void>;
@@ -58,6 +59,11 @@ export function createTaskActions({
 		},
 
 		async markDone(id) {
+			const task = tasksByTaskId.get(id);
+			// Award points if task has points and is not already done
+			if (task && !task.done && task.points !== undefined) {
+				addPoints(task.points);
+			}
 			await updateRowWithTask(id, (task) => (task.done = true));
 		},
 

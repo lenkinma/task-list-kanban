@@ -126,6 +126,12 @@
 					{@html mdContent}
 				</div>
 			{/if}
+			{#if task.points !== undefined}
+				<div class="task-points" class:done={task.done}>
+					<span class="points-icon">💰</span>
+					<span class="points-value">{task.points}</span>
+				</div>
+			{/if}
 		</div>
 		<TaskMenu {task} {taskActions} {columnTagTableStore} />
 	</div>
@@ -178,6 +184,7 @@
 
 			.task-content {
 				display: grid;
+				position: relative;
 
 				textarea {
 					cursor: text;
@@ -189,6 +196,36 @@
 					&:focus-within {
 						box-shadow: 0 0 0 3px
 							var(--background-modifier-border-focus);
+					}
+				}
+
+				.task-points {
+					position: absolute;
+					top: 0;
+					right: 0;
+					display: flex;
+					align-items: center;
+					gap: var(--size-2-1);
+					padding: var(--size-2-1) var(--size-4-2);
+					background-color: var(--interactive-accent);
+					color: var(--text-on-accent);
+					border-radius: var(--radius-s);
+					font-size: var(--font-ui-small);
+					font-weight: var(--font-semibold);
+					opacity: 0.9;
+					pointer-events: none;
+
+					.points-icon {
+						font-size: 0.9em;
+					}
+
+					.points-value {
+						line-height: 1;
+					}
+
+					&.done {
+						background-color: var(--text-muted);
+						opacity: 0.6;
 					}
 				}
 			}

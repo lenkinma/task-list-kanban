@@ -242,6 +242,25 @@ function extractDoneDate(content: string): { doneDate: string | undefined; conte
 }
 
 /**
+ * Regular expression to match points in format: $N (e.g., $5, $10, $100)
+ */
+const pointsRegex = /\$(\d+)/;
+
+/**
+ * Extracts points from task content if present.
+ * Returns the points value and the content without the points marker.
+ */
+function extractPoints(content: string): { points: number | undefined; contentWithoutPoints: string } {
+	const match = content.match(pointsRegex);
+	if (match && match[1]) {
+		const points = parseInt(match[1], 10);
+		const contentWithoutPoints = content.replace(pointsRegex, "").trim();
+		return { points, contentWithoutPoints };
+	}
+	return { points: undefined, contentWithoutPoints: content };
+}
+
+/**
  * Formats today's date in YYYY-MM-DD format
  */
 function getTodayDateString(): string {
@@ -284,10 +303,14 @@ export class Task {
 		const { doneDate, contentWithoutDate } = extractDoneDate(content);
 		this._doneDate = doneDate;
 
-		const tags = getTagsFromContent(contentWithoutDate);
+		// Extract points if present (format: $N)
+		const { points, contentWithoutPoints } = extractPoints(contentWithoutDate);
+		this._points = points;
+
+		const tags = getTagsFromContent(contentWithoutPoints);
 
 		this._id = sha256(content + fileHandle.path + rowIndex).toString();
-		this.content = contentWithoutDate;
+		this.content = contentWithoutPoints;
 		this._displayStatus = status || " ";
 		this._done = isDoneStatus(this._displayStatus, this.doneStatusMarkers);
 		this._path = fileHandle.path;
@@ -351,6 +374,11 @@ export class Task {
 		return this._doneDate;
 	}
 
+	private _points: number | undefined;
+	get points(): number | undefined {
+		return this._points;
+	}
+
 	private _deleted: boolean = false;
 
 	private readonly _path: string;
@@ -384,6 +412,8 @@ export class Task {
 			this.indentation,
 			`- [${this._displayStatus}] `,
 			this.content.trim(),
+			// Add points marker if points are set
+			this._points !== undefined ? ` $${this._points}` : "",
 			// Add done date in Tasks plugin format if task is done
 			this._done && this._doneDate ? ` ✅ ${this._doneDate}` : "",
 			this.consolidateTags && this.tags.size > 0

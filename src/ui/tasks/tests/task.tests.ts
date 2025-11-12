@@ -866,3 +866,157 @@ describe("Done date functionality (Tasks plugin format)", () => {
 		});
 	});
 });
+
+describe("Points system (Gamification)", () => {
+	const columnTags: ColumnTagTable = {
+		[kebab<ColumnTag>("column")]: "column",
+	};
+
+	describe("parsing points from task content", () => {
+		it("parses points value from $N format", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] помыть посуду $5 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task).toBeTruthy();
+			expect(task?.points).toBe(5);
+			expect(task?.content).toBe("помыть посуду");
+		});
+
+		it("parses large point values", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Complete project $100";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBe(100);
+			expect(task?.content).toBe("Complete project");
+		});
+
+		it("handles tasks without points", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Regular task #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBeUndefined();
+			expect(task?.content).toBe("Regular task");
+		});
+
+		it("parses points with tags", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task with points $10 #work #important";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBe(10);
+			expect(task?.tags.has("work")).toBe(true);
+			expect(task?.tags.has("important")).toBe(true);
+		});
+
+		it("parses points with column tag", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task $20 #column";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBe(20);
+			expect(task?.column).toBe("column");
+		});
+	});
+
+	describe("serializing tasks with points", () => {
+		it("includes points in serialized output", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task $15 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			const output = task?.serialise();
+			expect(output).toContain("$15");
+			expect(output).toContain("Task");
+		});
+
+		it("preserves points when marking task as done", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Complete task $50 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+				task.done = true;
+			}
+
+			const output = task?.serialise();
+			expect(output).toContain("$50");
+			expect(output).toContain("- [x]");
+			expect(output).toMatch(/✅ \d{4}-\d{2}-\d{2}/);
+		});
+
+		it("places points after content but before done date", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task $25 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+				task.done = true;
+			}
+
+			const output = task?.serialise();
+			expect(output).toMatch(/Task \$25 ✅ \d{4}-\d{2}-\d{2} #tag/);
+		});
+
+		it("does not add points marker when points are undefined", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task without points";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			const output = task?.serialise();
+			expect(output).not.toContain("$");
+		});
+	});
+
+	describe("edge cases", () => {
+		it("handles dollar sign in middle of text", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Buy something $10";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBe(10);
+			expect(task?.content).toBe("Buy something");
+		});
+
+		it("handles zero points", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Free task $0";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBe(0);
+		});
+
+		it("handles points with block link", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task $30 #tag ^block123";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task?.points).toBe(30);
+			expect(task?.blockLink).toBe("block123");
+			
+			const output = task?.serialise();
+			expect(output).toContain("$30");
+			expect(output).toContain("^block123");
+		});
+	});
+});

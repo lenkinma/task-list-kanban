@@ -12,6 +12,8 @@
 	import type { Writable, Readable } from "svelte/store";
 	import type { TaskActions } from "./tasks/actions";
 	import { type SettingValues, VisibilityOption } from "./settings/settings_store";
+	import { pointsBalanceStore, loadPointsBalance } from "./points/points_store";
+	import { onMount } from "svelte";
 
 	export let tasksStore: Writable<Task[]>;
 	export let taskActions: TaskActions;
@@ -94,11 +96,23 @@
 	async function handleOpenSettings() {
 		openSettings();
 	}
+
+	// Load points balance when component mounts
+	onMount(() => {
+		loadPointsBalance();
+	});
 </script>
 
 <div class="main">
-	<div class="settings">
-		<IconButton icon="lucide-settings" on:click={handleOpenSettings} />
+	<div class="header-bar">
+		<div class="points-balance">
+			<span class="points-icon">💰</span>
+			<span class="points-label">Баллы:</span>
+			<span class="points-value">{$pointsBalanceStore}</span>
+		</div>
+		<div class="settings">
+			<IconButton icon="lucide-settings" on:click={handleOpenSettings} />
+		</div>
 	</div>
 	<div class="controls">
 		<div class="text-filter">
@@ -160,9 +174,43 @@
 		display: flex;
 		flex-direction: column;
 
-		.settings {
+		.header-bar {
 			display: flex;
-			justify-content: flex-end;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: var(--size-4-2);
+			padding: var(--size-4-2) 0;
+
+			.points-balance {
+				display: flex;
+				align-items: center;
+				gap: var(--size-4-2);
+				padding: var(--size-4-2) var(--size-4-3);
+				background: linear-gradient(135deg, var(--interactive-accent) 0%, var(--interactive-accent-hover) 100%);
+				color: var(--text-on-accent);
+				border-radius: var(--radius-m);
+				font-size: var(--font-ui-medium);
+				font-weight: var(--font-semibold);
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+				.points-icon {
+					font-size: 1.3em;
+				}
+
+				.points-label {
+					opacity: 0.9;
+				}
+
+				.points-value {
+					font-size: 1.2em;
+					font-weight: var(--font-bold);
+				}
+			}
+
+			.settings {
+				display: flex;
+				justify-content: flex-end;
+			}
 		}
 
 		.controls {
