@@ -129,6 +129,12 @@
 		</div>
 		<TaskMenu {task} {taskActions} {columnTagTableStore} />
 	</div>
+	{#if task.done && task.doneDate}
+		<div class="task-done-date">
+			<span class="done-checkmark">✅</span>
+			<span class="done-date">{task.doneDate}</span>
+		</div>
+	{/if}
 	{#if showFilepath}
 		<div class="task-footer">
 			<p>{task.path}</p>
@@ -185,6 +191,23 @@
 							var(--background-modifier-border-focus);
 					}
 				}
+			}
+		}
+
+		.task-done-date {
+			display: flex;
+			align-items: center;
+			gap: var(--size-4-1);
+			padding: 0 var(--size-4-2) var(--size-4-2);
+			font-size: var(--font-ui-small);
+			color: var(--text-muted);
+
+			.done-checkmark {
+				font-size: 1em;
+			}
+
+			.done-date {
+				font-weight: var(--font-medium);
 			}
 		}
 

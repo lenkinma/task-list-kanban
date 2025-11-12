@@ -708,7 +708,12 @@ describe("Task archiving", () => {
 			expect(task).toBeTruthy();
 			expect(task?.done).toBe(true);
 			expect(task?.column).toBe("archived");
-			expect(task?.serialise()).toBe("- [x] Incomplete task #archived");
+			// Check that the output contains the done marker and archived tag
+			// Note: We don't check the full string because the date will vary
+			const output = task?.serialise();
+			expect(output).toContain("- [x] Incomplete task");
+			expect(output).toContain("✅ ");
+			expect(output).toContain("#archived");
 		});
 
 		it("uses default 'x' marker when archiving task with unknown status", () => {
@@ -722,7 +727,142 @@ describe("Task archiving", () => {
 			expect(task).toBeTruthy();
 			expect(task?.done).toBe(true);
 			expect(task?.column).toBe("archived");
-			expect(task?.serialise()).toBe("- [x] Unknown status task #archived");
+			// Check that the output contains the done marker and archived tag
+			const output = task?.serialise();
+			expect(output).toContain("- [x] Unknown status task");
+			expect(output).toContain("✅ ");
+			expect(output).toContain("#archived");
+		});
+	});
+});
+
+describe("Done date functionality (Tasks plugin format)", () => {
+	const columnTags: ColumnTagTable = {
+		[kebab<ColumnTag>("column")]: "column",
+	};
+
+	describe("parsing existing done dates", () => {
+		it("parses done date from completed task", () => {
+			let task: Task | undefined;
+			const taskString = "- [x] Completed task ✅ 2025-10-02 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task).toBeTruthy();
+			expect(task?.done).toBe(true);
+			expect(task?.content).toBe("Completed task");
+			expect(task?.tags.has("tag")).toBe(true);
+		});
+
+		it("preserves done date when serializing", () => {
+			let task: Task | undefined;
+			const taskString = "- [x] Completed task ✅ 2025-10-02 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			const output = task?.serialise();
+			expect(output).toContain("✅ 2025-10-02");
+			expect(output).toContain("Completed task");
+		});
+
+		it("handles done date without tags", () => {
+			let task: Task | undefined;
+			const taskString = "- [x] Completed task ✅ 2025-10-02";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task).toBeTruthy();
+			expect(task?.content).toBe("Completed task");
+			const output = task?.serialise();
+			expect(output).toContain("✅ 2025-10-02");
+		});
+
+		it("handles done date with column tag", () => {
+			let task: Task | undefined;
+			const taskString = "- [x] Completed task ✅ 2025-10-02 #tag #column";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			expect(task).toBeTruthy();
+			expect(task?.done).toBe(true);
+			expect(task?.column).toBeUndefined(); // Done tasks don't have column
+			const output = task?.serialise();
+			expect(output).toContain("✅ 2025-10-02");
+		});
+	});
+
+	describe("adding done date when marking task as done", () => {
+		it("adds done date when setting done=true", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Incomplete task #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+				task.done = true;
+			}
+
+			expect(task).toBeTruthy();
+			const output = task?.serialise();
+			expect(output).toContain("- [x] Incomplete task");
+			expect(output).toContain("✅ ");
+			expect(output).toMatch(/✅ \d{4}-\d{2}-\d{2}/);
+		});
+
+		it("does not overwrite existing done date", () => {
+			let task: Task | undefined;
+			const taskString = "- [x] Already done ✅ 2024-01-15 #tag";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+			}
+
+			const output = task?.serialise();
+			expect(output).toContain("✅ 2024-01-15");
+			expect(output).not.toMatch(/✅ 2025-/);
+		});
+
+		it("adds date when archiving incomplete task", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task to archive #column";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+				task.archive();
+			}
+
+			expect(task).toBeTruthy();
+			const output = task?.serialise();
+			expect(output).toContain("- [x] Task to archive");
+			expect(output).toContain("✅ ");
+			expect(output).toMatch(/✅ \d{4}-\d{2}-\d{2}/);
+			expect(output).toContain("#archived");
+		});
+	});
+
+	describe("done date position in serialized output", () => {
+		it("places done date after content but before tags", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task #tag #column";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+				task.done = true;
+			}
+
+			const output = task?.serialise();
+			expect(output).toMatch(/Task ✅ \d{4}-\d{2}-\d{2} #tag/);
+		});
+
+		it("places done date after content but before block link", () => {
+			let task: Task | undefined;
+			const taskString = "- [ ] Task #tag ^block123";
+			if (isTrackedTaskString(taskString)) {
+				task = new Task(taskString, { path: "/" }, 0, columnTags, false, "xX", "");
+				task.done = true;
+			}
+
+			const output = task?.serialise();
+			expect(output).toMatch(/Task ✅ \d{4}-\d{2}-\d{2} #tag \^block123/);
 		});
 	});
 });

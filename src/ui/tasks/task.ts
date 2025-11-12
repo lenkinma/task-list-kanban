@@ -223,6 +223,35 @@ function isIgnoredStatus(statusContent: string | undefined, ignoredStatusMarkers
 	return isStatusMatch(statusContent, ignoredStatusMarkers);
 }
 
+/**
+ * Regular expression to match done date in Tasks plugin format: ✅ YYYY-MM-DD
+ */
+const doneDateRegex = /✅\s*(\d{4}-\d{2}-\d{2})/;
+
+/**
+ * Extracts the done date from task content if present.
+ * Returns the date string and the content without the done date.
+ */
+function extractDoneDate(content: string): { doneDate: string | undefined; contentWithoutDate: string } {
+	const match = content.match(doneDateRegex);
+	if (match && match[1]) {
+		const contentWithoutDate = content.replace(doneDateRegex, "").trim();
+		return { doneDate: match[1], contentWithoutDate };
+	}
+	return { doneDate: undefined, contentWithoutDate: content };
+}
+
+/**
+ * Formats today's date in YYYY-MM-DD format
+ */
+function getTodayDateString(): string {
+	const today = new Date();
+	const year = today.getFullYear();
+	const month = String(today.getMonth() + 1).padStart(2, '0');
+	const day = String(today.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
+
 export class Task {
 	constructor(
 		rawContent: TaskString,
@@ -251,10 +280,14 @@ export class Task {
 			throw new Error("Content not found in raw content");
 		}
 
-		const tags = getTagsFromContent(content);
+		// Extract done date if present (Tasks plugin format: ✅ YYYY-MM-DD)
+		const { doneDate, contentWithoutDate } = extractDoneDate(content);
+		this._doneDate = doneDate;
+
+		const tags = getTagsFromContent(contentWithoutDate);
 
 		this._id = sha256(content + fileHandle.path + rowIndex).toString();
-		this.content = content;
+		this.content = contentWithoutDate;
 		this._displayStatus = status || " ";
 		this._done = isDoneStatus(this._displayStatus, this.doneStatusMarkers);
 		this._path = fileHandle.path;
@@ -300,9 +333,23 @@ export class Task {
 	set done(done: true) {
 		this._done = done;
 		this._column = undefined;
+		// Update display status to first done marker when marking as done
+		const doneMarkers = Array.from(this.doneStatusMarkers);
+		if (doneMarkers.length > 0 && doneMarkers[0]) {
+			this._displayStatus = doneMarkers[0];
+		}
+		// Set done date to today if not already set
+		if (!this._doneDate) {
+			this._doneDate = getTodayDateString();
+		}
 	}
 
 	private _displayStatus: string;
+	
+	private _doneDate: string | undefined;
+	get doneDate(): string | undefined {
+		return this._doneDate;
+	}
 
 	private _deleted: boolean = false;
 
@@ -337,6 +384,8 @@ export class Task {
 			this.indentation,
 			`- [${this._displayStatus}] `,
 			this.content.trim(),
+			// Add done date in Tasks plugin format if task is done
+			this._done && this._doneDate ? ` ✅ ${this._doneDate}` : "",
 			this.consolidateTags && this.tags.size > 0
 				? ` ${Array.from(this.tags)
 						.map((tag) => `#${tag}`)
@@ -351,7 +400,15 @@ export class Task {
 
 	archive() {
 		if (!this._done) {
-			this._displayStatus = "x";
+			// Update display status to first done marker when archiving
+			const doneMarkers = Array.from(this.doneStatusMarkers);
+			if (doneMarkers.length > 0 && doneMarkers[0]) {
+				this._displayStatus = doneMarkers[0];
+			}
+			// Set done date to today if not already set
+			if (!this._doneDate) {
+				this._doneDate = getTodayDateString();
+			}
 		}
 		this._done = true;
 		this._column = "archived";
@@ -389,5 +446,5 @@ export function isTrackedTaskString(input: string, ignoredStatusMarkers: string 
 // then follows the pattern "- [single_char_or_space]"
 // then contains an additional whitespace before any trailing content
 // excludes backlinks by ensuring brackets don't contain nested brackets
-const taskStringRegex = /^(\s*)-\s\[([^\[\]]*)\]\s(.+)/;
+const taskStringRegex = /^(\s*)-\s\[([^[\]]*)\]\s(.+)/;
 const blockLinkRegexp = /\s\^([a-zA-Z0-9-]+)$/;

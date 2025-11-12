@@ -12,6 +12,12 @@
 	import TaskComponent from "./task.svelte";
 	import IconButton from "./icon_button.svelte";
 	import { isDraggingStore } from "../dnd/store";
+	import { 
+		doneFilterStore, 
+		DoneFilterType, 
+		getFilterLabel, 
+		matchesFilter 
+	} from "../dnd/done_filter_store";
 	import type { Readable } from "svelte/store";
 
 	export let column: ColumnTag | DefaultColumns;
@@ -40,7 +46,12 @@
 	$: columnTitle = getColumnTitle(column, $columnTagTableStore);
 	$: columnColor = isColumnTag(column, columnTagTableStore) ? $columnColourTableStore[column] : undefined;
 
-	$: sortedTasks = tasks.sort((a, b) => {
+	// Filter done tasks based on selected filter
+	$: filteredTasks = column === "done" 
+		? tasks.filter(task => matchesFilter(task.doneDate, $doneFilterStore))
+		: tasks;
+
+	$: sortedTasks = filteredTasks.sort((a, b) => {
 		if (a.path === b.path) {
 			return a.rowIndex - b.rowIndex;
 		} else {
@@ -51,9 +62,35 @@
 	function showMenu(e: MouseEvent) {
 		const menu = new Menu();
 
+		if (column === "done") {
+			// Add filter options
+			const filters = [
+				DoneFilterType.All,
+				DoneFilterType.Today,
+				DoneFilterType.Yesterday,
+				DoneFilterType.ThisWeek,
+				DoneFilterType.LastWeek,
+				DoneFilterType.ThisMonth,
+				DoneFilterType.LastMonth,
+			];
+
+			filters.forEach((filter) => {
+				menu.addItem((i) => {
+					const label = getFilterLabel(filter);
+					const isActive = $doneFilterStore === filter;
+					i.setTitle(isActive ? `✓ ${label}` : label)
+						.onClick(() => {
+							doneFilterStore.set(filter);
+						});
+				});
+			});
+
+			menu.addSeparator();
+		}
+
 		menu.addItem((i) => {
 			i.setTitle(`Archive all`).onClick(() =>
-				taskActions.archiveTasks(tasks.map(({ id }) => id)),
+				taskActions.archiveTasks(filteredTasks.map(({ id }) => id)),
 			);
 		});
 
@@ -128,7 +165,12 @@
 		on:drop={handleDrop}
 	>
 		<div class="header">
-			<h2>{columnTitle}</h2>
+			<div class="header-title">
+				<h2>{columnTitle}</h2>
+				{#if column === "done" && $doneFilterStore !== DoneFilterType.All}
+					<span class="task-count">{sortedTasks.length}</span>
+				{/if}
+			</div>
 			{#if column === "done"}
 				<IconButton icon="lucide-more-vertical" on:click={showMenu} />
 			{/if}
@@ -195,10 +237,30 @@
 			height: 24px;
 			flex-shrink: 0;
 
-			h2 {
-				font-size: var(--font-ui-larger);
-				font-weight: var(--font-bold);
-				margin: 0;
+			.header-title {
+				display: flex;
+				align-items: center;
+				gap: var(--size-4-2);
+
+				h2 {
+					font-size: var(--font-ui-larger);
+					font-weight: var(--font-bold);
+					margin: 0;
+				}
+
+				.task-count {
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					min-width: 20px;
+					height: 20px;
+					padding: 0 var(--size-4-1);
+					font-size: var(--font-ui-small);
+					font-weight: var(--font-semibold);
+					color: var(--text-on-accent);
+					background-color: var(--interactive-accent);
+					border-radius: var(--radius-s);
+				}
 			}
 		}
 

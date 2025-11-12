@@ -33,7 +33,7 @@ const settingsObject = z.object({
 export type SettingValues = z.infer<typeof settingsObject>;
 
 export const defaultSettings: SettingValues = {
-	columns: ["Later", "Soonish", "Next week", "This week", "Today", "Pending"],
+	columns: ["Later", "Soonish", "Next week", "This week", "Today", "Pending", "Completed"],
 	scope: ScopeOption.Folder,
 	showFilepath: true,
 	consolidateTags: false,

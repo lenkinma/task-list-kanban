@@ -88,6 +88,23 @@ Examples:
 
 **Task formatting**: The plugin preserves original indentation and formatting when moving tasks between columns.
 
+**Done Date Tracking**: When tasks are moved to the "Done" column or marked as complete, they automatically receive a completion date in the Tasks plugin format (`✅ YYYY-MM-DD`). This date is:
+- Displayed in the task card on the kanban
+- Saved to the original file
+- Compatible with the Obsidian Tasks plugin
+- Preserved when the task is edited
+
+**Filtering Done Tasks**: Click the three dots menu in the "Done" column header to filter completed tasks by completion date:
+- **Все** (All) - Show all completed tasks
+- **Сделанные сегодня** (Done Today) - Tasks completed today
+- **Сделанные вчера** (Done Yesterday) - Tasks completed yesterday
+- **Сделанные за эту неделю** (Done This Week) - Tasks completed this week
+- **Сделанные за прошлую неделю** (Done Last Week) - Tasks completed last week
+- **Сделанные за этот месяц** (Done This Month) - Tasks completed this month
+- **Сделанные за прошлый месяц** (Done Last Month) - Tasks completed last month
+
+When a filter is active, a count badge appears next to the "Done" column title showing the number of filtered tasks.
+
 ### Visibility Controls
 
 **Uncategorised column**: Choose when to show tasks without column assignments:
