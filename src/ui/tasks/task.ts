@@ -378,6 +378,9 @@ export class Task {
 	get points(): number | undefined {
 		return this._points;
 	}
+	set points(points: number | undefined) {
+		this._points = points;
+	}
 
 	private _deleted: boolean = false;
 

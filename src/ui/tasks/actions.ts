@@ -14,6 +14,7 @@ export type TaskActions = {
 	changeColumn: (id: string, column: ColumnTag) => Promise<void>;
 	markDone: (id: string) => Promise<void>;
 	updateContent: (id: string, content: string) => Promise<void>;
+	updatePoints: (id: string, points: number | undefined) => Promise<void>;
 	viewFile: (id: string) => Promise<void>;
 	archiveTasks: (ids: string[]) => Promise<void>;
 	deleteTask: (ids: string) => Promise<void>;
@@ -69,6 +70,10 @@ export function createTaskActions({
 
 		async updateContent(id, content) {
 			await updateRowWithTask(id, (task) => (task.content = content));
+		},
+
+		async updatePoints(id, points) {
+			await updateRowWithTask(id, (task) => (task.points = points));
 		},
 
 		async archiveTasks(ids) {

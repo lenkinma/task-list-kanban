@@ -13,7 +13,10 @@
 	import type { TaskActions } from "./tasks/actions";
 	import { type SettingValues, VisibilityOption } from "./settings/settings_store";
 	import { pointsBalanceStore, loadPointsBalance } from "./points/points_store";
+	import { loadDailies } from "./dailies/dailies_store";
 	import { onMount } from "svelte";
+	import ShopModal from "./components/shop_modal.svelte";
+	import DailiesModal from "./components/dailies_modal.svelte";
 
 	export let tasksStore: Writable<Task[]>;
 	export let taskActions: TaskActions;
@@ -97,34 +100,58 @@
 		openSettings();
 	}
 
-	// Load points balance when component mounts
+	// Load points balance and dailies when component mounts
 	onMount(() => {
 		loadPointsBalance();
+		loadDailies();
 	});
+
+	let isShopOpen = false;
+	let isDailiesOpen = false;
+
+	function openShop() {
+		isShopOpen = true;
+	}
+
+	function closeShop() {
+		isShopOpen = false;
+	}
+
+	function openDailies() {
+		isDailiesOpen = true;
+	}
+
+	function closeDailies() {
+		isDailiesOpen = false;
+	}
 </script>
 
 <div class="main">
 	<div class="header-bar">
-		<div class="points-balance">
-			<span class="points-icon">💰</span>
-			<span class="points-label">Баллы:</span>
-			<span class="points-value">{$pointsBalanceStore}</span>
+		<div class="quick-actions">
+			<div class="dailies-button" on:click={openDailies} on:keypress={(e) => e.key === 'Enter' && openDailies()} role="button" tabindex="0" title="Дейлики">
+				<span class="dailies-icon">🔥</span>
+				<span class="dailies-label">Дейлики</span>
+			</div>
+			<div class="points-balance" on:click={openShop} on:keypress={(e) => e.key === 'Enter' && openShop()} role="button" tabindex="0">
+				<span class="points-icon">💰</span>
+				<span class="points-label">Баллы:</span>
+				<span class="points-value">{$pointsBalanceStore}</span>
+				<span class="shop-icon">🛒</span>
+			</div>
 		</div>
-		<div class="settings">
-			<IconButton icon="lucide-settings" on:click={handleOpenSettings} />
-		</div>
-	</div>
-	<div class="controls">
-		<div class="text-filter">
-			<label for="filter">Filter by content:</label>
+		<div class="filters">
 			<input
 				name="filter"
 				type="search"
 				bind:value={filterText}
-				placeholder="Type to search..."
+				placeholder="Поиск задач..."
 			/>
+			<SelectTag tags={[...tags]} bind:value={selectedTags} />
 		</div>
-		<SelectTag tags={[...tags]} bind:value={selectedTags} />
+		<div class="settings">
+			<IconButton icon="lucide-settings" on:click={handleOpenSettings} />
+		</div>
 	</div>
 
 	<div class="columns">
@@ -166,6 +193,9 @@
 			{/if}
 		</div>
 	</div>
+
+	<ShopModal isOpen={isShopOpen} onClose={closeShop} />
+	<DailiesModal isOpen={isDailiesOpen} onClose={closeDailies} />
 </div>
 
 <style lang="scss">
@@ -176,10 +206,57 @@
 
 		.header-bar {
 			display: flex;
-			justify-content: space-between;
 			align-items: center;
-			margin-bottom: var(--size-4-2);
+			gap: var(--size-4-3);
+			margin-bottom: var(--size-4-4);
 			padding: var(--size-4-2) 0;
+
+			.quick-actions {
+				display: flex;
+				align-items: center;
+				gap: var(--size-4-2);
+				flex-shrink: 0;
+			}
+
+		.dailies-button {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: var(--size-2-2);
+			padding: var(--size-4-2) var(--size-4-3);
+			background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+			color: var(--text-on-accent);
+			border-radius: var(--radius-m);
+			font-size: var(--font-ui-medium);
+			font-weight: var(--font-semibold);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+			position: relative;
+
+			&:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+			}
+
+			.dailies-icon {
+				font-size: 1.3em;
+				animation: flame 2s ease-in-out infinite;
+			}
+
+			.dailies-label {
+				white-space: nowrap;
+			}
+		}
+
+			@keyframes flame {
+				0%, 100% {
+					transform: scale(1);
+				}
+				50% {
+					transform: scale(1.1);
+				}
+			}
 
 			.points-balance {
 				display: flex;
@@ -192,6 +269,13 @@
 				font-size: var(--font-ui-medium);
 				font-weight: var(--font-semibold);
 				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+				cursor: pointer;
+				transition: transform 0.2s, box-shadow 0.2s;
+
+				&:hover {
+					transform: translateY(-2px);
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				}
 
 				.points-icon {
 					font-size: 1.3em;
@@ -205,35 +289,30 @@
 					font-size: 1.2em;
 					font-weight: var(--font-bold);
 				}
+
+				.shop-icon {
+					font-size: 1.2em;
+					opacity: 0.9;
+					margin-left: var(--size-2-1);
+				}
+			}
+
+			.filters {
+				display: flex;
+				gap: var(--size-4-3);
+				flex-grow: 1;
+				align-items: center;
+
+				input[type="search"] {
+					flex: 1;
+					background: var(--background-primary);
+					min-width: 150px;
+				}
 			}
 
 			.settings {
 				display: flex;
-				justify-content: flex-end;
-			}
-		}
-
-		.controls {
-			margin-bottom: var(--size-4-4);
-			display: grid;
-			gap: var(--size-4-8);
-			grid-template-columns: 1fr 1fr;
-
-			.text-filter {
-				display: flex;
-				flex-direction: column;
-				flex-grow: 1;
-
-				label {
-					display: inline-block;
-					margin-bottom: var(--size-4-1);
-
-					~ input[type="search"] {
-						display: block;
-						flex-grow: 1;
-						background: var(--background-primary);
-					}
-				}
+				flex-shrink: 0;
 			}
 		}
 
